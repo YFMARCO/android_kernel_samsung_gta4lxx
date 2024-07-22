@@ -1,14 +1,34 @@
 #!/bin/bash
-
 export ARCH=arm64
+export PLATFORM_VERSION=14
+export ANDROID_MAJOR_VERSION=u
+ln -s /usr/bin/python2.7 $HOME/python
+export PATH=$(pwd)/proton-clang/bin:$PATH #path to proton
 mkdir out
+clear
 
-BUILD_CROSS_COMPILE=$(pwd)/toolchain/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/aarch64-linux-android-
-KERNEL_LLVM_BIN=$(pwd)/toolchain/llvm-arm-toolchain-ship/10.0/bin/clang
-CLANG_TRIPLE=aarch64-linux-gnu-
-KERNEL_MAKE_ENV="DTC_EXT=$(pwd)/tools/dtc CONFIG_BUILD_ARM64_DT_OVERLAY=y"
+ARGS="
+CC=clang
+CROSS_COMPILE=aarch64-linux-gnu-
+ARCH=arm64
+LD=ld.lld
+AR=llvm-ar
+NM=llvm-nm
+OBJCOPY=llvm-objcopy
+OBJDUMP=llvm-objdump
+READELF=llvm-readelf
+OBJSIZE=llvm-size
+STRIP=llvm-strip
+LLVM_AR=llvm-ar
+LLVM_DIS=llvm-dis
+CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+"
+make -j$(nproc) -C $(pwd) O=$(pwd)/out ${ARGS} clean && make -j8 -C $(pwd) O=$(pwd)/out ${ARGS} mrproper
+make -j$(nproc) -C $(pwd) O=$(pwd)/out ${ARGS} gta4lwifi_eur_open_defconfig
+make -j$(nproc) -C $(pwd) O=$(pwd)/out ${ARGS} menuconfig
+make -j$(nproc) -C $(pwd) O=$(pwd)/out ${ARGS}
 
-make -j8 -C $(pwd) O=$(pwd)/out $KERNEL_MAKE_ENV ARCH=arm64 CROSS_COMPILE=$BUILD_CROSS_COMPILE REAL_CC=$KERNEL_LLVM_BIN CLANG_TRIPLE=$CLANG_TRIPLE gta4l_eur_open_defconfig
-make -j8 -C $(pwd) O=$(pwd)/out $KERNEL_MAKE_ENV ARCH=arm64 CROSS_COMPILE=$BUILD_CROSS_COMPILE REAL_CC=$KERNEL_LLVM_BIN CLANG_TRIPLE=$CLANG_TRIPLE
-
-cp out/arch/arm64/boot/Image $(pwd)/arch/arm64/boot/Image
+#to copy all the kernel modules (.ko) to "modules" folder.
+mkdir -p modules
+find . -type f -name "*.ko" -exec cp -n {} modules \;
+echo "Module files copied to the 'modules' folder."
