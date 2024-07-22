@@ -1,0 +1,70 @@
+name: Build Kernel CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: set permissions
+      run: sudo chmod +rwx *
+    - name: install needed pkgs
+      run: sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install bc flex git ccache automake lzop bison gperf build-essential zip curl zlib1g-dev zlib1g-dev g++-multilib python3-networkx libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng -y
+    - name: run building script 
+      run: bash ./build_kernel.sh
+    - name: list fils
+      run: ls $(pwd)/arch/arm64/boot/
+      
+    - name: Archive build output
+      run: |
+        mkdir -p output
+        cp  $(pwd)/arch/arm64/boot/Image output/  # Adjust the path to your build output
+        tar -czf release.tar.gz output
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-output
+        path: release.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+  
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+  
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build-output
+          path: ./release
+  
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+  
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/release.tar.gz
+          asset_name: release.tar.gz
+          asset_content_type: application/gzip
