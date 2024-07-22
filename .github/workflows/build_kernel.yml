@@ -1,16 +1,16 @@
 name: Build Kernel CI
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "14.0" ]
+  pull_request:
+    branches: [ "14.0" ]
 
 jobs:
-  Kernel:
+  build:
+
     runs-on: ubuntu-latest
-    defaults:
-      run:
-       shell: bash
-       working-directory: ${{ github.workspace }}
-       
+
     steps:
     - uses: actions/checkout@v4
     - name: set permissions
